@@ -1,4 +1,4 @@
-// Stockage éphémère : un fichier par job, purge automatique après TTL (§17.1).
+// Stockage éphémère : un fichier par job, supprimé dès son unique téléchargement (§17.1).
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { config } from './config.js';
@@ -9,8 +9,9 @@ export const tmpDir = path.join(config.storagePath, '..', 'tmp');
 export async function initStorage() {
   await fs.mkdir(filesDir, { recursive: true });
   await fs.mkdir(tmpDir, { recursive: true });
-  // Un redémarrage laisse des temporaires orphelins : on repart propre.
+  // Les jobs vivent en mémoire : après un redémarrage, tout fichier restant est orphelin.
   await removeDirContents(tmpDir);
+  await removeDirContents(filesDir);
 }
 
 async function removeDirContents(dir) {

@@ -153,7 +153,6 @@ export async function analyze(videoId, { lang = 'fr' } = {}) {
     best,
     bestAac,
     durationSeconds,
-    minAbr: config.aacPassthroughMinAbr,
     targetBitrateKbps: config.targetBitrateKbps,
     enabled: config.enabledOutputFormats,
   });

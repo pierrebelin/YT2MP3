@@ -11,7 +11,7 @@ import { AppError } from './errors.js';
 import { analyze } from './metadata.js';
 import { checkBinary } from './proc.js';
 import { initStorage, jobFilePath, hasFreeSpace } from './storage.js';
-import { createJob, getJob, jobView, cancelJob, subscribe, startReaper, stats } from './queue.js';
+import { createJob, getJob, jobView, cancelJob, consumeJob, subscribe, startReaper, stats } from './queue.js';
 import { parseYoutubeUrl, isValidVideoId } from '../public/shared/youtube-url.js';
 import { sanitizeFilename, asciiFallback } from '../public/shared/filename.js';
 import { resolveRequestedFormat, FORMAT_KEYS } from '../public/shared/formats.js';
@@ -241,7 +241,14 @@ async function handleDownload(req, res, job, url) {
   }
 
   res.writeHead(200, { ...headers, 'Content-Length': stat.size });
-  fs.createReadStream(file).pipe(res);
+  const stream = fs.createReadStream(file);
+  stream.pipe(res);
+
+  // Téléchargement unique : dès que le corps est parti en entier, le fichier disparaît du disque.
+  res.on('close', () => {
+    if (res.writableFinished) void consumeJob(job.jobId);
+    else stream.destroy();
+  });
 }
 
 // Proxy de miniature (F-16) : aucune requête du navigateur vers un domaine tiers.
@@ -336,7 +343,7 @@ async function route(req, res) {
       defaultOutputFormat: config.defaultOutputFormat,
       enabledOutputFormats: config.enabledOutputFormats,
       embedCoverDefault: config.embedCoverDefault,
-      fileTtlMinutes: config.fileTtlMinutes,
+      orphanTtlMinutes: config.orphanTtlMinutes,
       maxDurationSeconds: config.maxDurationSeconds,
     });
   }
@@ -383,7 +390,10 @@ async function main() {
 
   server.listen(config.port, config.host, () => {
     console.log(`YT2MP3 écoute sur http://localhost:${config.port}`);
-    console.log(`Fichiers : ${config.storagePath} (TTL ${config.fileTtlMinutes} min)`);
+    console.log(
+      `Fichiers : ${config.storagePath} — supprimés dès le téléchargement ` +
+        `(purge des orphelins après ${config.orphanTtlMinutes} min)`,
+    );
   });
 }
 

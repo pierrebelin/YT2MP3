@@ -21,7 +21,9 @@ export const config = {
   maxConcurrentJobs: num(env.MAX_CONCURRENT_JOBS, 4),
   maxQueueLength: num(env.MAX_QUEUE_LENGTH, 50),
 
-  fileTtlMinutes: num(env.FILE_TTL_MINUTES, 30),
+  // Le fichier est supprimé dès son unique téléchargement ; ce délai ne couvre que les jobs
+  // abandonnés (onglet fermé avant la fin), pour éviter d'accumuler des orphelins sur le disque.
+  orphanTtlMinutes: num(env.ORPHAN_TTL_MINUTES, 10),
   metadataCacheTtlMinutes: num(env.METADATA_CACHE_TTL_MINUTES, 15),
 
   rateLimitAnalyze: num(env.RATE_LIMIT_ANALYZE, 20),
@@ -32,12 +34,11 @@ export const config = {
   storageQuotaMb: num(env.STORAGE_QUOTA_MB, 10240),
 
   targetBitrateKbps: num(env.TARGET_BITRATE_KBPS, 320),
-  defaultOutputFormat: env.DEFAULT_OUTPUT_FORMAT || 'auto',
-  enabledOutputFormats: (env.ENABLED_OUTPUT_FORMATS || 'auto,mp3-320,m4a-copy,mp3-v0')
+  defaultOutputFormat: env.DEFAULT_OUTPUT_FORMAT || 'mp3-320',
+  enabledOutputFormats: (env.ENABLED_OUTPUT_FORMATS || 'mp3-320,m4a-copy,mp3-v0')
     .split(',')
     .map((k) => k.trim())
     .filter(Boolean),
-  aacPassthroughMinAbr: num(env.AAC_PASSTHROUGH_MIN_ABR, 192),
   force44100: bool(env.FORCE_44100, false),
   embedCoverDefault: bool(env.EMBED_COVER_DEFAULT, true),
 
