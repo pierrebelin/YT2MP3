@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="robots" content="noindex" />
+    <title>YT2MP3 — audio YouTube pour vos platines</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <link rel="icon" href="data:," />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/">YT2MP3</a>
+      <div class="header-actions">
+        <label class="visually-hidden" for="lang">Langue</label>
+        <select id="lang" class="select-mini">
+          <option value="fr">FR</option>
+          <option value="en">EN</option>
+        </select>
+        <button id="theme-toggle" class="button-mini" type="button" aria-pressed="false">
+          <span aria-hidden="true">🌙</span>
+          <span class="visually-hidden" data-i18n="theme.toggle">Changer de thème</span>
+        </button>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="hero">
+        <h1 data-i18n="hero.title">Convertissez une vidéo YouTube pour vos platines</h1>
+        <p class="lede" data-i18n="hero.subtitle">Sans publicité. Sans compte. Sans traceur.</p>
+      </section>
+
+      <section class="card" aria-labelledby="url-legend">
+        <h2 id="url-legend" class="visually-hidden" data-i18n="url.legend">Adresse de la vidéo</h2>
+        <form id="url-form" class="url-form" novalidate>
+          <input
+            id="url"
+            class="input"
+            type="url"
+            name="url"
+            autocomplete="off"
+            spellcheck="false"
+            data-i18n-placeholder="url.placeholder"
+            placeholder="Collez l'URL de la vidéo…"
+            aria-describedby="url-error"
+          />
+          <button id="analyze" class="button button-primary" type="submit" disabled data-i18n="url.submit">
+            Analyser
+          </button>
+        </form>
+        <p id="url-error" class="inline-error" role="alert" hidden></p>
+        <p id="url-note" class="inline-note" hidden></p>
+      </section>
+
+      <section id="preview" class="card preview" hidden aria-labelledby="preview-title">
+        <img id="preview-thumb" class="thumb" alt="" width="320" height="180" />
+        <div class="preview-body">
+          <h2 id="preview-title" class="preview-heading"></h2>
+          <p id="preview-meta" class="muted"></p>
+          <p class="muted">
+            <span data-i18n="preview.source">Source</span> :
+            <span id="preview-source"></span>
+            <button
+              id="quality-info"
+              class="info-button"
+              type="button"
+              aria-expanded="false"
+              aria-controls="quality-note"
+            >
+              <span aria-hidden="true">ⓘ</span>
+              <span class="visually-hidden" data-i18n="preview.infoLabel">À propos de la qualité</span>
+            </button>
+          </p>
+          <p id="quality-note" class="note" hidden data-i18n="preview.qualityNote"></p>
+          <p class="muted">
+            <span data-i18n="preview.output">Fichier produit</span> :
+            <span id="preview-output"></span>
+          </p>
+        </div>
+      </section>
+
+      <section id="options" class="card" hidden>
+        <fieldset class="fieldset">
+          <legend data-i18n="filename.legend">Nom du fichier</legend>
+          <div id="preset-list" class="preset-list"></div>
+
+          <div class="filename-row">
+            <input
+              id="filename"
+              class="input"
+              type="text"
+              spellcheck="false"
+              autocomplete="off"
+              data-i18n-aria-label="filename.ariaLabel"
+              aria-label="Nom du fichier, sans l'extension"
+              aria-describedby="filename-counter filename-error"
+            />
+            <span id="filename-ext" class="suffix" aria-hidden="true">.mp3</span>
+          </div>
+
+          <div class="filename-footer">
+            <button id="filename-reset" class="link-button" type="button" hidden data-i18n="filename.reset">
+              ⟲ Réinitialiser
+            </button>
+            <button id="filename-undo" class="link-button" type="button" hidden data-i18n="filename.undo">
+              Annuler — revenir à mon nom
+            </button>
+            <span id="filename-counter" class="counter" aria-live="polite"></span>
+          </div>
+          <p id="filename-error" class="inline-error" role="alert" hidden data-i18n="filename.empty">
+            Le nom ne peut pas être vide.
+          </p>
+        </fieldset>
+
+        <fieldset class="fieldset">
+          <legend data-i18n="format.legend">Format de sortie</legend>
+          <div id="format-list" class="preset-list"></div>
+          <p id="format-notice" class="inline-note" role="status" hidden></p>
+          <details class="details">
+            <summary data-i18n="format.compare">Comparer les formats et la compatibilité</summary>
+            <div class="table-scroll">
+              <table class="compat-table">
+                <thead>
+                  <tr>
+                    <th data-i18n="format.table.format">Format</th>
+                    <th>rekordbox</th>
+                    <th>CDJ-2000NXS2</th>
+                    <th>CDJ-3000</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td>MP3</td><td>✅</td><td>✅</td><td>✅</td></tr>
+                  <tr><td>AAC (.m4a)</td><td>✅</td><td>✅</td><td>✅</td></tr>
+                  <tr><td>Opus</td><td>❌</td><td>❌</td><td>❌</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="note" data-i18n="format.tableNote">
+              WAV, AIFF, FLAC et ALAC sont volontairement absents : la source YouTube est déjà
+              compressée en lossy. Les proposer produirait des fichiers dix fois plus lourds sans
+              aucun gain de qualité. Opus est exclu car aucun matériel Pioneer ne le lit.
+            </p>
+          </details>
+        </fieldset>
+
+        <label class="checkbox">
+          <input id="embed-cover" type="checkbox" checked />
+          <span data-i18n="options.embedCover">Intégrer la pochette</span>
+        </label>
+
+        <button id="convert" class="button button-primary button-block" type="button" data-i18n="options.convert">
+          Convertir
+        </button>
+        <p class="note center" data-i18n="options.compat">Compatible rekordbox · CDJ-2000NXS2 · CDJ-3000</p>
+      </section>
+
+      <section id="progress-panel" class="card" hidden aria-labelledby="progress-label">
+        <h2 id="progress-label" class="visually-hidden" data-i18n="progress.legend">Conversion en cours</h2>
+        <div
+          id="progressbar"
+          class="progressbar"
+          role="progressbar"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          aria-valuenow="0"
+        >
+          <div id="progress-fill" class="progressbar-fill"></div>
+        </div>
+        <div class="progress-footer">
+          <p id="progress-phase" class="muted" aria-live="polite"></p>
+          <button id="cancel" class="button button-ghost" type="button" data-i18n="progress.cancel">Annuler</button>
+        </div>
+      </section>
+
+      <section id="result" class="card" hidden tabindex="-1" aria-labelledby="result-title">
+        <h2 id="result-title" data-i18n="result.title">Fichier prêt</h2>
+        <p id="result-filename" class="result-filename"></p>
+        <p id="result-meta" class="muted"></p>
+        <p id="result-ttl" class="note"></p>
+        <div class="button-row">
+          <a id="result-download" class="button button-primary" href="#" download data-i18n="result.download">
+            Retélécharger
+          </a>
+          <button id="result-restart" class="button button-ghost" type="button" data-i18n="result.restart">
+            Convertir une autre vidéo
+          </button>
+        </div>
+      </section>
+
+      <section id="failure" class="card card-error" hidden aria-labelledby="failure-title">
+        <h2 id="failure-title" data-i18n="failure.title">⚠️ La conversion a échoué</h2>
+        <p id="failure-message" role="alert"></p>
+        <div class="button-row">
+          <button id="failure-retry" class="button button-primary" type="button" hidden data-i18n="failure.retry">
+            Réessayer
+          </button>
+          <button id="failure-restart" class="button button-ghost" type="button" data-i18n="result.restart">
+            Convertir une autre vidéo
+          </button>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p data-i18n="footer.claim">Sans pub · sans traceur · sans compte</p>
+      <details class="details">
+        <summary data-i18n="footer.privacy">Confidentialité</summary>
+        <p class="note" data-i18n="footer.privacyBody"></p>
+      </details>
+    </footer>
+
+    <div id="live-region" class="visually-hidden" role="status" aria-live="polite"></div>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
