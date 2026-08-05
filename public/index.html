@@ -124,16 +124,13 @@
                 <thead>
                   <tr>
                     <th data-i18n="format.table.format">Format</th>
-                    <th>rekordbox</th>
-                    <th>CDJ-2000NXS2</th>
-                    <th>CDJ-3000</th>
+                    <th data-i18n="format.table.bitrate">Débit</th>
+                    <th data-i18n="format.table.size">Taille</th>
+                    <th data-i18n="format.table.reencoded">Réencodage</th>
+                    <th data-i18n="format.table.compat">rekordbox · CDJ</th>
                   </tr>
                 </thead>
-                <tbody>
-                  <tr><td>MP3</td><td>✅</td><td>✅</td><td>✅</td></tr>
-                  <tr><td>AAC (.m4a)</td><td>✅</td><td>✅</td><td>✅</td></tr>
-                  <tr><td>Opus</td><td>❌</td><td>❌</td><td>❌</td></tr>
-                </tbody>
+                <tbody id="compat-body"></tbody>
               </table>
             </div>
             <p class="note" data-i18n="format.tableNote">
@@ -173,21 +170,6 @@
         </div>
       </section>
 
-      <section id="result" class="card" hidden tabindex="-1" aria-labelledby="result-title">
-        <h2 id="result-title" data-i18n="result.title">Fichier prêt</h2>
-        <p id="result-filename" class="result-filename"></p>
-        <p id="result-meta" class="muted"></p>
-        <p id="result-ttl" class="note"></p>
-        <div class="button-row">
-          <a id="result-download" class="button button-primary" href="#" download data-i18n="result.download">
-            Retélécharger
-          </a>
-          <button id="result-restart" class="button button-ghost" type="button" data-i18n="result.restart">
-            Convertir une autre vidéo
-          </button>
-        </div>
-      </section>
-
       <section id="failure" class="card card-error" hidden aria-labelledby="failure-title">
         <h2 id="failure-title" data-i18n="failure.title">⚠️ La conversion a échoué</h2>
         <p id="failure-message" role="alert"></p>
@@ -204,11 +186,11 @@
 
     <footer class="site-footer">
       <p data-i18n="footer.claim">Sans pub · sans traceur · sans compte</p>
-      <details class="details">
-        <summary data-i18n="footer.privacy">Confidentialité</summary>
-        <p class="note" data-i18n="footer.privacyBody"></p>
-      </details>
+      <p class="note" data-i18n="footer.privacyBody"></p>
     </footer>
+
+    <!-- Confirmation éphémère du téléchargement ; l'annonce vocale passe par #live-region. -->
+    <div id="toast" class="toast" hidden aria-hidden="true"></div>
 
     <div id="live-region" class="visually-hidden" role="status" aria-live="polite"></div>
 

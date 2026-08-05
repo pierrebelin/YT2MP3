@@ -41,7 +41,6 @@ export function jobView(job) {
     bitrateKbps: job.bitrateKbps,
     durationSeconds: job.durationSeconds,
     downloadUrl: job.state === 'ready' ? `/api/jobs/${job.jobId}/file?t=${job.token}` : null,
-    expiresAt: job.expiresAt ? new Date(job.expiresAt).toISOString() : null,
     createdAt: new Date(job.createdAt).toISOString(),
     error: job.error,
   };
@@ -95,7 +94,6 @@ export function createJob(input) {
     progress: 0,
     sizeBytes: null,
     token: crypto.randomBytes(24).toString('hex'),
-    expiresAt: null,
     error: null,
     createdAt: Date.now(),
     subscribers: new Set(),
@@ -175,12 +173,7 @@ async function execute(job) {
       return;
     }
 
-    setState(job, 'ready', {
-      phase: null,
-      progress: 100,
-      sizeBytes: result.sizeBytes,
-      expiresAt: Date.now() + config.fileTtlMinutes * 60_000,
-    });
+    setState(job, 'ready', { phase: null, progress: 100, sizeBytes: result.sizeBytes });
   } catch (error) {
     if (job.state === 'cancelled') {
       await removeJobFiles(job.jobId);
@@ -234,19 +227,27 @@ export async function cancelJob(jobId) {
   return job;
 }
 
-// --- Purge TTL (§17.1) ---------------------------------------------------------------------
+// --- Consommation et purge (§17.1) -----------------------------------------------------------
+
+/** Le fichier vient d'être servi : il est supprimé immédiatement, le lien devient caduc. */
+export async function consumeJob(jobId) {
+  const job = jobs.get(jobId);
+  if (!job || job.state !== 'ready') return;
+  job.state = 'expired';
+  await removeJobFiles(jobId);
+}
 
 export function startReaper() {
   const timer = setInterval(async () => {
     const now = Date.now();
+    const orphanMs = config.orphanTtlMinutes * 60_000;
     for (const [jobId, job] of jobs) {
-      if (job.state === 'ready' && job.expiresAt && job.expiresAt <= now) {
+      // Filet de sécurité : un fichier jamais réclamé (onglet fermé) ne reste pas sur le disque.
+      if (job.state === 'ready' && now - job.createdAt > orphanMs) {
         job.state = 'expired';
         await removeJobFiles(jobId);
       }
-      // Un job terminal est oublié une heure après son expiration.
-      const reference = job.expiresAt || job.createdAt;
-      if (TERMINAL.has(job.state) && now - reference > 60 * 60_000) {
+      if (TERMINAL.has(job.state) && now - job.createdAt > 60 * 60_000) {
         jobs.delete(jobId);
       }
     }

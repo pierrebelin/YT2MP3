@@ -31,6 +31,7 @@ const el = {
   filenameError: $('filename-error'),
   formatList: $('format-list'),
   formatNotice: $('format-notice'),
+  compatBody: $('compat-body'),
   embedCover: $('embed-cover'),
   convert: $('convert'),
   progressPanel: $('progress-panel'),
@@ -38,16 +39,11 @@ const el = {
   progressFill: $('progress-fill'),
   progressPhase: $('progress-phase'),
   cancel: $('cancel'),
-  result: $('result'),
-  resultFilename: $('result-filename'),
-  resultMeta: $('result-meta'),
-  resultTtl: $('result-ttl'),
-  resultDownload: $('result-download'),
-  resultRestart: $('result-restart'),
   failure: $('failure'),
   failureMessage: $('failure-message'),
   failureRetry: $('failure-retry'),
   failureRestart: $('failure-restart'),
+  toast: $('toast'),
   live: $('live-region'),
 };
 
@@ -86,9 +82,10 @@ const state = {
   filename: '',
   previousCustom: null,
   undoTimer: null,
-  format: store.get(STORAGE.format) || 'auto',
+  format: store.get(STORAGE.format) || 'mp3-320',
   job: null,
   source: null, // EventSource
+  toastTimer: null,
 };
 
 // --- Internationalisation -------------------------------------------------------------------
@@ -116,15 +113,6 @@ function formatBytes(bytes) {
   if (!bytes) return '—';
   const mb = bytes / (1024 * 1024);
   return `${new Intl.NumberFormat(lang, { maximumFractionDigits: 1 }).format(mb)} ${lang === 'en' ? 'MB' : 'Mo'}`;
-}
-
-function formatDuration(seconds) {
-  const total = Math.round(seconds || 0);
-  const h = Math.floor(total / 3600);
-  const m = Math.floor((total % 3600) / 60);
-  const s = total % 60;
-  const pad = (n) => String(n).padStart(2, '0');
-  return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
 }
 
 function localized(value) {
@@ -247,8 +235,7 @@ function renderOutputLine() {
   else bits.push(`MP3 ${entry.bitrateKbps} kbps`);
   if (entry.sampleRateHz) bits.push(formatHz(entry.sampleRateHz));
 
-  let line = `${bits.join(', ')} — ${entry.reencoded ? t('preview.compatible') : `${t('preview.copy')}, ${t('preview.compatible')}`}`;
-  if (entry.key === 'auto' && entry.reason) line += ` — ${localized(entry.reason)}`;
+  const line = `${bits.join(', ')} — ${entry.reencoded ? t('preview.compatible') : `${t('preview.copy')}, ${t('preview.compatible')}`}`;
   el.previewOutput.textContent = line;
 }
 
@@ -353,9 +340,9 @@ function renderFormats() {
   const formats = state.analysis.formats;
   const selected = formats.find((f) => f.key === state.format);
 
-  // Une sélection mémorisée devenue indisponible retombe sur `auto` (F-43).
+  // Une sélection mémorisée devenue indisponible retombe sur `mp3-320` (F-43).
   if (!selected || !selected.available) {
-    state.format = 'auto';
+    state.format = 'mp3-320';
     el.formatNotice.textContent = t('format.fallback');
     show(el.formatNotice);
   } else {
@@ -405,18 +392,44 @@ function renderFormats() {
 
     body.append(head, description);
 
-    if (format.key === 'auto' && format.reason) {
-      const reason = document.createElement('span');
-      reason.className = 'preset-reason';
-      reason.textContent = `${t('format.resolves')} ${format.resolvesTo === 'm4a-copy' ? 'M4A' : 'MP3 320 kbps'} — ${localized(format.reason)}`;
-      body.append(reason);
-    }
-
     label.append(input, body);
     el.formatList.append(label);
   }
 
+  renderCompatTable(formats);
   updateConvertLabel();
+}
+
+// Le tableau compare les formats réellement proposés pour cette vidéo, pas des familles
+// de conteneurs abstraites : sinon il ne sert à rien au moment de choisir.
+function renderCompatTable(formats) {
+  el.compatBody.textContent = '';
+
+  for (const format of formats) {
+    const row = document.createElement('tr');
+    if (!format.available) row.classList.add('is-disabled');
+
+    const bitrate = format.bitrateKbps
+      ? `${format.container === 'm4a' ? 'AAC ' : ''}${format.bitrateKbps} kbps${format.key === 'mp3-v0' ? ` (${t('format.table.vbr')})` : ''}`
+      : '—';
+
+    const cells = format.available
+      ? [
+          localized(format.label),
+          bitrate,
+          format.estimatedSizeBytes ? `~${formatBytes(format.estimatedSizeBytes)}` : '—',
+          format.reencoded ? t('format.table.yes') : t('format.table.no'),
+          '✅',
+        ]
+      : [localized(format.label), '—', '—', '—', t('format.unavailable')];
+
+    for (const value of cells) {
+      const cell = document.createElement('td');
+      cell.textContent = value;
+      row.append(cell);
+    }
+    el.compatBody.append(row);
+  }
 }
 
 function selectFormat(key) {
@@ -431,8 +444,7 @@ function selectFormat(key) {
 function updateConvertLabel() {
   const entry = currentFormat();
   if (!entry) return;
-  const resolved = entry.resolvesTo || entry.key;
-  const label = resolved === 'm4a-copy' ? 'M4A' : resolved === 'mp3-v0' ? 'MP3 V0' : 'MP3 320 kbps';
+  const label = entry.key === 'm4a-copy' ? 'M4A' : entry.key === 'mp3-v0' ? 'MP3 V0' : 'MP3 320 kbps';
   el.convert.textContent = t('options.convert', { format: label });
 }
 
@@ -440,7 +452,6 @@ function updateConvertLabel() {
 
 function renderAnalysis() {
   hide(el.progressPanel);
-  hide(el.result);
   hide(el.failure);
 
   state.previousCustom = null;
@@ -466,7 +477,6 @@ async function startConversion() {
 
   el.convert.disabled = true;
   hide(el.failure);
-  hide(el.result);
 
   try {
     const job = await api('/api/jobs', {
@@ -482,8 +492,8 @@ async function startConversion() {
   } catch (error) {
     el.convert.disabled = false;
     if (error.code === 'FORMAT_UNAVAILABLE') {
-      state.format = 'auto';
-      store.set(STORAGE.format, 'auto');
+      state.format = 'mp3-320';
+      store.set(STORAGE.format, 'mp3-320');
       renderFormats();
     }
     showFailure(error);
@@ -561,7 +571,6 @@ function renderJob(job) {
   if (job.state === 'expired') return showFailure({ code: 'FILE_EXPIRED', message: t('result.expired') });
 
   show(el.progressPanel);
-  hide(el.result);
   el.progressFill.style.width = `${job.progress}%`;
   el.progressbar.setAttribute('aria-valuenow', String(job.progress));
 
@@ -573,39 +582,43 @@ function renderJob(job) {
   el.progressbar.classList.toggle('indeterminate', job.state === 'queued');
 }
 
+// Le fichier n'existe sur le serveur que le temps d'un unique téléchargement : pas de panneau
+// de résultat, pas de second lien. On déclenche, on remonte, on confirme.
 function showResult(job) {
   hide(el.progressPanel);
   hide(el.failure);
   el.convert.disabled = false;
 
-  el.resultFilename.textContent = job.filename;
-  el.resultMeta.textContent = t('result.meta', {
-    size: formatBytes(job.sizeBytes),
-    bitrate: job.bitrateKbps ?? '—',
-    duration: formatDuration(job.durationSeconds),
-  });
+  if (job.autoDownloaded) return;
+  job.autoDownloaded = true;
 
-  const minutes = job.expiresAt ? Math.max(1, Math.round((new Date(job.expiresAt) - Date.now()) / 60000)) : null;
-  el.resultTtl.textContent = minutes ? t('result.ttl', { minutes }) : '';
+  const link = document.createElement('a');
+  link.href = job.downloadUrl;
+  link.download = job.filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
 
-  el.resultDownload.href = job.downloadUrl;
-  el.resultDownload.setAttribute('download', job.filename);
+  location.hash = '';
+  // Défilement immédiat : un `behavior: 'smooth'` est annulé par le déclenchement du download.
+  window.scrollTo({ top: 0 });
+  showToast(t('toast.downloaded', { title: state.analysis?.title || job.filename }));
+}
 
-  show(el.result);
-  el.result.focus({ preventScroll: true }); // A11Y-5
-  el.result.scrollIntoView({ block: 'center', behavior: 'smooth' });
-  announce(t('result.title'));
+const TOAST_DURATION_MS = 2500;
 
-  // Déclenchement automatique du téléchargement (F-40).
-  if (!job.autoDownloaded) {
-    job.autoDownloaded = true;
-    const link = document.createElement('a');
-    link.href = job.downloadUrl;
-    link.download = job.filename;
-    document.body.append(link);
-    link.click();
-    link.remove();
-  }
+function showToast(message) {
+  el.toast.textContent = message;
+  show(el.toast);
+  // Un cadre d'animation sépare l'affichage de la classe : sinon la transition ne joue pas.
+  requestAnimationFrame(() => el.toast.classList.add('is-visible'));
+  announce(message);
+
+  clearTimeout(state.toastTimer);
+  state.toastTimer = setTimeout(() => {
+    el.toast.classList.remove('is-visible');
+    state.toastTimer = setTimeout(() => hide(el.toast), 250);
+  }, TOAST_DURATION_MS);
 }
 
 function showCancelled() {
@@ -645,7 +658,6 @@ function restart() {
   hide(el.preview);
   hide(el.options);
   hide(el.progressPanel);
-  hide(el.result);
   hide(el.failure);
   el.url.value = '';
   el.url.focus();
@@ -712,7 +724,6 @@ el.qualityInfo.addEventListener('click', () => {
 
 el.convert.addEventListener('click', startConversion);
 el.cancel.addEventListener('click', cancelCurrentJob);
-el.resultRestart.addEventListener('click', restart);
 el.failureRestart.addEventListener('click', restart);
 el.failureRetry.addEventListener('click', () => {
   if (state.analysis) startConversion();

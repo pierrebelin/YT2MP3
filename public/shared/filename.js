@@ -58,43 +58,39 @@ export function asciiFallback(name) {
     .replace(/["\\]/g, '_');
 }
 
-export const PRESET_KEYS = ['title', 'channel-title', 'title-channel', 'artist-track', 'title-year'];
+export const PRESET_KEYS = ['title', 'title-channel', 'artist-track'];
 
 export const PRESET_LABELS = {
   title: { fr: 'Titre seul', en: 'Title only' },
-  'channel-title': { fr: 'Chaîne + Titre', en: 'Channel + Title' },
   'title-channel': { fr: 'Titre + Chaîne', en: 'Title + Channel' },
   'artist-track': { fr: 'Artiste - Morceau', en: 'Artist - Track' },
-  'title-year': { fr: 'Titre (Année)', en: 'Title (Year)' },
   custom: { fr: 'Personnalisé', en: 'Custom' },
 };
 
 /**
- * Construit les modèles disponibles pour une vidéo (§8.2, règles R3/R4).
- * @param {{ title: string, channel: string, year: number|null, videoId: string,
+ * Construit les modèles disponibles pour une vidéo (§8.2, règle R3).
+ * @param {{ title: string, channel: string, videoId: string,
  *           artistGuess: string|null, titleGuess: string|null,
  *           confidence: 'high'|'medium'|null }} meta
  * @param {'fr'|'en'} [lang]
  */
 export function buildPresets(meta, lang = 'fr') {
-  const { title = '', channel = '', year = null, videoId = '' } = meta;
+  const { title = '', channel = '', videoId = '' } = meta;
   const presets = [];
   const push = (key, value) => {
     presets.push({ key, label: PRESET_LABELS[key][lang] || PRESET_LABELS[key].fr, value: sanitizeFilename(value, videoId) });
   };
 
   push('title', title);
-  push('channel-title', `${channel} - ${title}`);
   push('title-channel', `${title} - ${channel}`);
   if (meta.confidence && meta.artistGuess && meta.titleGuess) {
     push('artist-track', `${meta.artistGuess} - ${meta.titleGuess}`); // R3
   }
-  if (year) push('title-year', `${title} (${year})`); // R4
 
   return presets;
 }
 
 /** Modèle présélectionné (§8.2 R1). */
 export function defaultPresetKey(meta) {
-  return meta.confidence === 'high' ? 'artist-track' : 'channel-title';
+  return meta.confidence === 'high' ? 'artist-track' : 'title-channel';
 }

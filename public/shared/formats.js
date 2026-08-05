@@ -1,17 +1,7 @@
-// Catalogue des formats de sortie et arbitrage du mode `auto` (§6.3).
+// Catalogue des formats de sortie (§6.3).
 // Module isomorphe : le front affiche, le serveur décide — même code, pas de dérive.
 
 export const FORMAT_DEFS = [
-  {
-    key: 'auto',
-    extension: '.mp3', // recalculé selon la résolution
-    container: 'mp3',
-    label: { fr: 'Meilleure qualité (recommandé)', en: 'Best quality (recommended)' },
-    description: {
-      fr: "On analyse la source et on choisit automatiquement : copie sans réencodage si YouTube propose un AAC haut débit, MP3 320 kbps sinon. Toujours lisible sur rekordbox et CDJ.",
-      en: 'We analyse the source and pick automatically: stream copy when YouTube offers a high-bitrate AAC, MP3 320 kbps otherwise. Always readable on rekordbox and CDJ.',
-    },
-  },
   {
     key: 'mp3-320',
     extension: '.mp3',
@@ -64,35 +54,6 @@ function estimateSize(bitrateKbps, durationSeconds) {
   return Math.round((bitrateKbps * 1000 * durationSeconds) / 8);
 }
 
-/**
- * Arbitrage du mode `auto` (§6.3).
- * @returns {{ key: 'mp3-320'|'m4a-copy', reason: { fr: string, en: string } }}
- */
-export function resolveAuto({ bestAac, best, minAbr }) {
-  if (bestAac && bestAac.bitrateKbps >= minAbr) {
-    return {
-      key: 'm4a-copy',
-      reason: {
-        fr: `copie sans réencodage (AAC ${Math.round(bestAac.bitrateKbps)} kbps disponible)`,
-        en: `stream copy (AAC ${Math.round(bestAac.bitrateKbps)} kbps available)`,
-      },
-    };
-  }
-  const from = best ? `${codecLabel(best.codec)} ${Math.round(best.bitrateKbps)} kbps` : 'la source';
-  return {
-    key: 'mp3-320',
-    reason: bestAac
-      ? {
-          fr: `AAC limité à ${Math.round(bestAac.bitrateKbps)} kbps, transcodage depuis ${from}`,
-          en: `AAC capped at ${Math.round(bestAac.bitrateKbps)} kbps, transcoding from ${from}`,
-        }
-      : {
-          fr: `aucun flux AAC, transcodage depuis ${from}`,
-          en: `no AAC stream, transcoding from ${from}`,
-        },
-  };
-}
-
 export function codecLabel(codec = '') {
   const c = String(codec).toLowerCase();
   if (c.startsWith('opus')) return 'Opus';
@@ -105,10 +66,9 @@ export function codecLabel(codec = '') {
 /**
  * Construit la liste `formats` de /api/analyze (§11.1).
  * @param {{ best: object|null, bestAac: object|null, durationSeconds: number,
- *           minAbr: number, targetBitrateKbps: number, enabled: string[] }} input
+ *           targetBitrateKbps: number, enabled: string[] }} input
  */
-export function buildFormats({ best, bestAac, durationSeconds, minAbr, targetBitrateKbps = 320, enabled = FORMAT_KEYS }) {
-  const auto = resolveAuto({ bestAac, best, minAbr });
+export function buildFormats({ best, bestAac, durationSeconds, targetBitrateKbps = 320, enabled = FORMAT_KEYS }) {
   const aacAvailable = Boolean(bestAac);
 
   return FORMAT_DEFS.filter((def) => enabled.includes(def.key)).map((def) => {
@@ -135,35 +95,15 @@ export function buildFormats({ best, bestAac, durationSeconds, minAbr, targetBit
       };
     }
 
-    if (def.key === 'mp3-320' || def.key === 'mp3-v0') {
-      const bitrate = def.key === 'mp3-320' ? targetBitrateKbps : V0_BITRATE_KBPS;
-      return {
-        ...base,
-        available: Boolean(best),
-        unavailableReason: best ? undefined : 'NO_AAC_STREAM',
-        bitrateKbps: bitrate,
-        sampleRateHz: best?.sampleRateHz ?? null,
-        channels: best?.channels ?? null,
-        reencoded: true,
-        estimatedSizeBytes: estimateSize(bitrate, durationSeconds),
-      };
-    }
-
-    // `auto` : reflète le format vers lequel il se résout.
-    const resolvedIsCopy = auto.key === 'm4a-copy';
-    const bitrate = resolvedIsCopy ? Math.round(bestAac.bitrateKbps) : targetBitrateKbps;
-    const stream = resolvedIsCopy ? bestAac : best;
+    const bitrate = def.key === 'mp3-320' ? targetBitrateKbps : V0_BITRATE_KBPS;
     return {
       ...base,
       available: Boolean(best),
-      resolvesTo: auto.key,
-      reason: auto.reason,
-      container: resolvedIsCopy ? 'm4a' : 'mp3',
-      extension: resolvedIsCopy ? '.m4a' : '.mp3',
+      unavailableReason: best ? undefined : 'NO_AAC_STREAM',
       bitrateKbps: bitrate,
-      sampleRateHz: stream?.sampleRateHz ?? null,
-      channels: stream?.channels ?? null,
-      reencoded: !resolvedIsCopy,
+      sampleRateHz: best?.sampleRateHz ?? null,
+      channels: best?.channels ?? null,
+      reencoded: true,
       estimatedSizeBytes: estimateSize(bitrate, durationSeconds),
     };
   });
@@ -173,5 +113,5 @@ export function buildFormats({ best, bestAac, durationSeconds, minAbr, targetBit
 export function resolveRequestedFormat(key, formats) {
   const entry = formats.find((f) => f.key === key);
   if (!entry || !entry.available) return null;
-  return entry.resolvesTo || entry.key;
+  return entry.key;
 }
