@@ -83,9 +83,19 @@ async function readJsonBody(req, limitBytes = 8 * 1024) {
 
 const buckets = new Map();
 
+// Derrière un reverse proxy, `remoteAddress` vaut toujours l'IP du proxy : sans cela, tous les
+// visiteurs partageraient un unique compteur. On ne fait confiance à l'en-tête que si le
+// déploiement l'annonce explicitement (§10.4).
+function clientIp(req) {
+  if (config.trustProxy) {
+    const forwarded = req.headers['x-forwarded-for'];
+    if (forwarded) return String(forwarded).split(',')[0].trim();
+  }
+  return req.socket.remoteAddress || 'unknown';
+}
+
 function rateLimit(req, key, max) {
-  const ip = req.socket.remoteAddress || 'unknown';
-  const id = `${key}:${ip}`;
+  const id = `${key}:${clientIp(req)}`;
   const now = Date.now();
   const windowMs = config.rateLimitWindowMinutes * 60_000;
   const bucket = buckets.get(id);

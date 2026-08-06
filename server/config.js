@@ -17,6 +17,9 @@ export const config = {
   port: num(env.PORT, 3000),
   host: env.HOST || '0.0.0.0',
 
+  // À n'activer que si un reverse proxy de confiance réécrit `X-Forwarded-For`.
+  trustProxy: bool(env.TRUST_PROXY, false),
+
   maxDurationSeconds: num(env.MAX_DURATION_SECONDS, 5400),
   maxConcurrentJobs: num(env.MAX_CONCURRENT_JOBS, 4),
   maxQueueLength: num(env.MAX_QUEUE_LENGTH, 50),
