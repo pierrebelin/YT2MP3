@@ -1,0 +1,41 @@
+name: Déploiement
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+env:
+  HOST: 217.160.62.104
+  SSH_USER: yt2mp3
+  APP_DIR: /home/yt2mp3/app
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configuration SSH
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+
+      - name: Envoi des fichiers
+        run: |
+          rsync -az --delete \
+            --exclude '.git*' --exclude 'deploy/' --exclude 'data/' --exclude 'SPEC.md' \
+            ./ "$SSH_USER@$HOST:$APP_DIR/"
+
+      - name: Redémarrage
+        run: |
+          ssh "$SSH_USER@$HOST" 'sudo systemctl restart yt2mp3'
+          sleep 3
+          ssh "$SSH_USER@$HOST" 'curl -fsS localhost:3000/healthz'

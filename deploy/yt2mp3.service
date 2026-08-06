@@ -1,0 +1,22 @@
+[Unit]
+Description=YT2MP3
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=yt2mp3
+Group=yt2mp3
+WorkingDirectory=/home/yt2mp3/app
+EnvironmentFile=/home/yt2mp3/env
+ExecStart=/usr/bin/node server/index.js
+Restart=always
+RestartSec=3
+
+# Pas de ProtectHome : l'application vit dans /home/yt2mp3.
+ProtectSystem=strict
+ReadWritePaths=/home/yt2mp3
+PrivateTmp=true
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
