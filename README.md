@@ -79,6 +79,7 @@ Tout passe par des variables d'environnement (§10.4 de la spec). Les plus utile
 | `FORCE_44100` | `false` | Rééchantillonnage 44,1 kHz (matériel ancien) |
 | `BLOCKLIST_PATH` | *(vide)* | Fichier d'IDs de vidéos/chaînes bloqués |
 | `YTDLP_COOKIES_PATH` | *(vide)* | Cookies YouTube pour instance auto-hébergée |
+| `YTDLP_FORCE_IPV6` | `false` | Fait passer yt-dlp par l'IPv6 (IPv4 d'hébergeur bloquée par YouTube) |
 
 Exemple :
 

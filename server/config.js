@@ -49,6 +49,7 @@ export const config = {
   ytdlpPath: env.YTDLP_PATH || 'yt-dlp',
   ffmpegPath: env.FFMPEG_PATH || 'ffmpeg',
   ytdlpCookiesPath: env.YTDLP_COOKIES_PATH || '',
+  ytdlpForceIpv6: bool(env.YTDLP_FORCE_IPV6, false),
 
   // Délais de garde (§12.2), en millisecondes.
   timeouts: {

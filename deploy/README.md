@@ -154,6 +154,8 @@ La ligne `[debug] JS runtimes:` doit citer `node`. YouTube impose un runtime JS 
 2025 ; le service passe `--js-runtimes node` à yt-dlp, qui n'active que Deno par défaut.
 
 `yt-dlp` renvoie `Sign in to confirm you're not a bot` : les IP de datacenter sont souvent
-challengées par YouTube. D'abord vérifier que `yt-dlp -U` est passé ; sinon, déposer des
+challengées par YouTube. L'IPv4 du VPS l'est, pas son IPv6 (à activer dans le Cloud Panel
+IONOS) : d'où `YTDLP_FORCE_IPV6=1` dans `/home/yt2mp3/env`. Si l'IPv6 est bloquée à son tour,
+vérifier que `yt-dlp -U` est passé ; sinon, déposer des
 cookies en `/home/yt2mp3/cookies.txt` et ajouter
 `YTDLP_COOKIES_PATH=/home/yt2mp3/cookies.txt` dans `/home/yt2mp3/env`.
