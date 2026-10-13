@@ -141,6 +141,18 @@ systemctl status yt2mp3
 journalctl -u yt2mp3 -f
 ```
 
+Une erreur `UPSTREAM_ERROR` / `DOWNLOAD_FAILED` côté client : la sortie brute de yt-dlp est
+dans le journal, sur les lignes `[yt-dlp]` (`journalctl -u yt2mp3 | grep yt-dlp`). Pour tester
+à la main avec les mêmes options que le service :
+
+```bash
+sudo -u yt2mp3 /usr/local/bin/yt-dlp -v --js-runtimes node:/usr/bin/node \
+  --skip-download --dump-single-json 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' > /dev/null
+```
+
+La ligne `[debug] JS runtimes:` doit citer `node`. YouTube impose un runtime JS depuis fin
+2025 ; le service passe `--js-runtimes node` à yt-dlp, qui n'active que Deno par défaut.
+
 `yt-dlp` renvoie `Sign in to confirm you're not a bot` : les IP de datacenter sont souvent
 challengées par YouTube. D'abord vérifier que `yt-dlp -U` est passé ; sinon, déposer des
 cookies en `/home/yt2mp3/cookies.txt` et ajouter

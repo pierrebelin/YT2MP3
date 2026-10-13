@@ -20,6 +20,8 @@ function scaled(phase, ratio) {
 
 function ytdlpBaseArgs() {
   const args = ['--no-playlist', '--no-warnings'];
+  // YouTube exige un runtime JS pour ses défis ; yt-dlp n'active que Deno par défaut.
+  args.push('--js-runtimes', `node:${process.execPath}`);
   if (config.ytdlpCookiesPath) args.push('--cookies', config.ytdlpCookiesPath);
   return args;
 }
@@ -62,6 +64,7 @@ async function downloadStream({ videoId, itag, dir, signal, onSpawn, onProgress 
     if (error.aborted) throw error;
     if (error.timedOut) throw new AppError('DOWNLOAD_TIMEOUT');
     if (error.exitCode === null) throw new AppError('TOOL_MISSING');
+    console.error(`[yt-dlp] téléchargement ${videoId} : ${(error.stderr || '').trim()}`);
     const code = mapYtdlpError(error.stderr || '');
     throw new AppError(code === 'UPSTREAM_ERROR' ? 'DOWNLOAD_FAILED' : code);
   }
