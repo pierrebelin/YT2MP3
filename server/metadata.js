@@ -34,6 +34,7 @@ function ytdlpBaseArgs() {
   const args = ['--no-playlist', '--no-warnings', '--no-progress'];
   // YouTube exige un runtime JS pour ses défis ; yt-dlp n'active que Deno par défaut.
   args.push('--js-runtimes', `node:${process.execPath}`);
+  if (config.ytdlpForceIpv6) args.push('--force-ipv6');
   if (config.ytdlpCookiesPath) args.push('--cookies', config.ytdlpCookiesPath);
   return args;
 }
