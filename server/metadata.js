@@ -32,6 +32,8 @@ async function refreshBlocklist() {
 
 function ytdlpBaseArgs() {
   const args = ['--no-playlist', '--no-warnings', '--no-progress'];
+  // YouTube exige un runtime JS pour ses défis ; yt-dlp n'active que Deno par défaut.
+  args.push('--js-runtimes', `node:${process.execPath}`);
   if (config.ytdlpCookiesPath) args.push('--cookies', config.ytdlpCookiesPath);
   return args;
 }
@@ -48,7 +50,12 @@ async function dumpJson(videoId) {
     });
   } catch (error) {
     if (error.exitCode === null) throw new AppError('TOOL_MISSING');
-    if (error.timedOut) throw new AppError('UPSTREAM_ERROR');
+    if (error.timedOut) {
+      console.error(`[yt-dlp] analyse ${videoId} : délai dépassé`);
+      throw new AppError('UPSTREAM_ERROR');
+    }
+    // Sortie brute journalisée, jamais renvoyée au client (§14.3).
+    console.error(`[yt-dlp] analyse ${videoId} : ${(error.stderr || '').trim()}`);
     throw new AppError(mapYtdlpError(error.stderr || ''));
   }
 
